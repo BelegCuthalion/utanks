@@ -1,15 +1,16 @@
-import things.Tank;
-import things.Thing;
+import things.*;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GamePanel extends JPanel {
+public class GamePanel extends JPanel implements BombArena {
     private Tank player1;
     private Tank player2;
-    private List<Thing> things = new ArrayList<>(10);
+    private List<Thing> thingsToDraw = new ArrayList<>(10);
+    private List<Wall> walls = new ArrayList<>(10);
+    private List<Bomb> onTheAir = new ArrayList<>(10);
 
     private boolean p1Left = false;
     private boolean p1Right = false;
@@ -20,14 +21,40 @@ public class GamePanel extends JPanel {
     private boolean quitPressed = false;
 
     GamePanel() {
-        this.player1 = new Tank(100, 100, Tank.TankSize.NORMAL);
-        this.player2 = new Tank(400, 400, Tank.TankSize.BIG);
+        this.player1 = new Tank(100, 100, Tank.TankSize.NORMAL, this);
+        this.player2 = new Tank(400, 400, Tank.TankSize.BIG, this);
 
-        this.things.add(this.player1);
-        this.things.add(this.player2);
+        this.thingsToDraw.add(this.player1);
+        this.thingsToDraw.add(this.player2);
+
+        Wall leftEdge = new Wall(20, 20, 600, Wall.Orientation.VERTICAL);
+        Wall topEdge = new Wall(20, 20, 600, Wall.Orientation.HORIZONTAL);
+        Wall rightEdge = new Wall(620, 20, 600, Wall.Orientation.VERTICAL);
+        Wall bottomEdge = new Wall(20, 620, 600, Wall.Orientation.HORIZONTAL);
+        Wall center = new Wall(320, 220, 200, Wall.Orientation.VERTICAL);
+        this.walls.add(leftEdge);
+        this.walls.add(topEdge);
+        this.walls.add(rightEdge);
+        this.walls.add(bottomEdge);
+        this.walls.add(center);
+        this.thingsToDraw.add(leftEdge);
+        this.thingsToDraw.add(topEdge);
+        this.thingsToDraw.add(rightEdge);
+        this.thingsToDraw.add(bottomEdge);
+        this.thingsToDraw.add(center);
     }
 
+    /**
+     * State of the affairs.
+     * This could be a function of time.
+     */
     void updateState() {
+        this.onTheAir.forEach(Bomb::step);
+        this.onTheAir.forEach(Bomb::growOld);
+        this.onTheAir.removeIf(Bomb::isDead);
+        this.onTheAir.forEach(bomb -> this.walls.forEach(wall -> {
+            if (wall.hit(bomb)) bomb.bounce(wall.getOrientation());
+        }));
         if (this.p1Left) {
             this.player1.turnLeft();
         }
@@ -35,7 +62,11 @@ public class GamePanel extends JPanel {
             this.player1.turnRight();
         }
         if (this.p1Up) {
-            this.player1.step();
+            if (this.walls.stream().anyMatch(wall -> wall.hit(this.player1))) {
+                this.player1.bounce(null);
+            } else {
+                this.player1.step();
+            }
         }
         if (this.p2Left) {
             this.player2.turnLeft();
@@ -51,8 +82,10 @@ public class GamePanel extends JPanel {
 
     protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
-        for (Thing thingy : this.things)
+        for (Thing thingy : this.thingsToDraw)
             thingy.draw((Graphics2D) graphics);
+        for (Bomb fatMan : this.onTheAir)
+            fatMan.draw((Graphics2D) graphics);
     }
 
     void setP1Left(boolean p1Left) {
@@ -89,5 +122,9 @@ public class GamePanel extends JPanel {
 
     void setQuitPressed(boolean quitPressed) {
         this.quitPressed = quitPressed;
+    }
+
+    public void fired(Bomb bomb) {
+        this.onTheAir.add(bomb);
     }
 }

@@ -1,23 +1,23 @@
 package things;
 
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
 
-public class Tank extends Thing {
+public class Tank extends MovingThing {
     private final static int RADIUS = 20;
     private final static int GUN_LENGTH = 30;
 
-    private List<Bomb> onTheAir = new ArrayList<>(10);
+    private BombArena arena;
 
     private TankSize size;
-    public Tank(int x, int y, TankSize size) {
-        super(x, y, Thing.VELOCITY / size.getFactor(), Thing.ROT_VELOCITY / size.getFactor());
+    public Tank(int x, int y, TankSize size, BombArena arena) {
+        super(x, y,
+                Math.round(Tank.RADIUS * size.getFactor()),
+                MovingThing.VELOCITY / size.getFactor(),
+                MovingThing.ROT_VELOCITY / size.getFactor(),
+                0
+        );
         this.size = size;
-    }
-
-    int getRadius() {
-        return Math.round(Tank.RADIUS * this.size.getFactor());
+        this.arena = arena;
     }
 
     private int getGunLength() {
@@ -45,14 +45,16 @@ public class Tank extends Thing {
                 this.getGunPointX(),
                 this.getGunPointY()
         );
-        for (Bomb littleBoy : this.onTheAir) {
-            littleBoy.draw(graphics);
-        }
-        this.onTheAir.removeIf(bomb -> bomb.age-- == 0);
+    }
+
+    public void bounce(Wall.Orientation ignore) {
+        this.turnAround();
+        this.step(10);
+        this.turnAround();
     }
 
     public void fire() {
-        this.onTheAir.add(new Bomb(this.getGunPointX(), this.getGunPointY(), this.getDirection()));
+        this.arena.fired(new Bomb(this.getGunPointX(), this.getGunPointY(), this.getDirection()));
     }
 
     public enum TankSize {
